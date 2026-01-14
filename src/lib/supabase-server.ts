@@ -153,6 +153,69 @@ export async function getRelatedPosts(
   return (data || []) as RelatedPostItem[]
 }
 
+// Search posts by keyword
+export async function searchPosts(query: string, limit: number = 20): Promise<PostListItem[]> {
+  const supabase = createServerSupabaseClient()
+
+  // Search in title, description, and content using ilike
+  const { data, error } = await supabase
+    .from('posts')
+    .select('id, slug, title, description, featured_image, category, tags, published_at, product_price')
+    .eq('is_published', true)
+    .or(`title.ilike.%${query}%,description.ilike.%${query}%,product_name.ilike.%${query}%`)
+    .order('published_at', { ascending: false })
+    .limit(limit)
+
+  if (error) {
+    console.error('Error searching posts:', error)
+    return []
+  }
+
+  return (data || []) as PostListItem[]
+}
+
+// Get paginated posts
+export async function getPaginatedPosts(
+  page: number = 1,
+  pageSize: number = 9
+): Promise<{ posts: PostListItem[]; totalCount: number; totalPages: number }> {
+  const supabase = createServerSupabaseClient()
+
+  // Get total count
+  const { count, error: countError } = await supabase
+    .from('posts')
+    .select('*', { count: 'exact', head: true })
+    .eq('is_published', true)
+
+  if (countError) {
+    console.error('Error counting posts:', countError)
+    return { posts: [], totalCount: 0, totalPages: 0 }
+  }
+
+  const totalCount = count || 0
+  const totalPages = Math.ceil(totalCount / pageSize)
+  const offset = (page - 1) * pageSize
+
+  // Get posts for current page
+  const { data, error } = await supabase
+    .from('posts')
+    .select('id, slug, title, description, featured_image, category, tags, published_at, product_price')
+    .eq('is_published', true)
+    .order('published_at', { ascending: false })
+    .range(offset, offset + pageSize - 1)
+
+  if (error) {
+    console.error('Error fetching paginated posts:', error)
+    return { posts: [], totalCount: 0, totalPages: 0 }
+  }
+
+  return {
+    posts: (data || []) as PostListItem[],
+    totalCount,
+    totalPages,
+  }
+}
+
 // Increment view count (optional - requires RPC function in Supabase)
 // export async function incrementViewCount(postId: string) {
 //   const supabase = createServerSupabaseClient()
