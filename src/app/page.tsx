@@ -1,65 +1,137 @@
-import Image from "next/image";
+import Link from 'next/link'
+import Image from 'next/image'
+import { getPublishedPosts } from '@/lib/supabase-server'
 
-export default function Home() {
+export const revalidate = 3600 // Revalidate every hour
+
+export default async function HomePage() {
+  const posts = await getPublishedPosts()
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <main className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white shadow-sm">
+        <div className="max-w-6xl mx-auto px-4 py-6">
+          <h1 className="text-2xl font-bold text-gray-900">
+            <Link href="/">골프 장비 리뷰</Link>
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="text-gray-600 mt-1">
+            드라이버, 아이언, 퍼터 등 골프 장비 리뷰와 추천
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </header>
+
+      {/* Main Content */}
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        {posts.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-500">아직 게시된 글이 없습니다.</p>
+          </div>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {posts.map((post) => (
+              <PostCard key={post.id} post={post} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Footer */}
+      <footer className="bg-white border-t mt-12">
+        <div className="max-w-6xl mx-auto px-4 py-8">
+          <p className="text-center text-gray-500 text-sm">
+            이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.
+          </p>
+          <p className="text-center text-gray-400 text-xs mt-2">
+            © {new Date().getFullYear()} 골프 장비 리뷰. All rights reserved.
+          </p>
         </div>
-      </main>
-    </div>
-  );
+      </footer>
+    </main>
+  )
+}
+
+interface PostCardProps {
+  post: {
+    id: string
+    slug: string
+    title: string
+    description: string | null
+    featured_image: string | null
+    category: string
+    tags: string[] | null
+    published_at: string | null
+    product_price: number | null
+  }
+}
+
+function PostCard({ post }: PostCardProps) {
+  const formattedDate = post.published_at
+    ? new Date(post.published_at).toLocaleDateString('ko-KR', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      })
+    : ''
+
+  const formattedPrice = post.product_price
+    ? new Intl.NumberFormat('ko-KR').format(post.product_price) + '원'
+    : null
+
+  return (
+    <article className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+      <Link href={`/posts/${post.slug}`}>
+        {/* Image */}
+        <div className="relative h-48 bg-gray-200">
+          {post.featured_image ? (
+            <Image
+              src={post.featured_image}
+              alt={post.title}
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            />
+          ) : (
+            <div className="flex items-center justify-center h-full text-gray-400">
+              <svg
+                className="w-12 h-12"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
+              </svg>
+            </div>
+          )}
+          {/* Category Badge */}
+          <span className="absolute top-2 left-2 bg-green-600 text-white text-xs px-2 py-1 rounded">
+            {post.category}
+          </span>
+        </div>
+
+        {/* Content */}
+        <div className="p-4">
+          <h2 className="font-bold text-lg text-gray-900 line-clamp-2 mb-2">
+            {post.title}
+          </h2>
+          {post.description && (
+            <p className="text-gray-600 text-sm line-clamp-2 mb-3">
+              {post.description}
+            </p>
+          )}
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-gray-400">{formattedDate}</span>
+            {formattedPrice && (
+              <span className="font-semibold text-green-600">{formattedPrice}</span>
+            )}
+          </div>
+        </div>
+      </Link>
+    </article>
+  )
 }
