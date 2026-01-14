@@ -50,6 +50,11 @@ export const metadata: Metadata = {
     google: GOOGLE_SITE_VERIFICATION || undefined,
   },
   alternates: {
+    canonical: siteUrl,
+    languages: {
+      "ko-KR": siteUrl,
+      "x-default": siteUrl,
+    },
     types: {
       "application/rss+xml": `${siteUrl}/feed.xml`,
     },

@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { getPaginatedPosts, getCategories } from '@/lib/supabase-server'
+import { getPaginatedPosts, getCategories, getPopularPosts, getAllTags } from '@/lib/supabase-server'
 
 export const revalidate = 3600 // Revalidate every hour
 
@@ -11,8 +11,12 @@ interface HomePageProps {
 export default async function HomePage({ searchParams }: HomePageProps) {
   const { page } = await searchParams
   const currentPage = Math.max(1, parseInt(page || '1', 10))
-  const { posts, totalCount, totalPages } = await getPaginatedPosts(currentPage, 9)
-  const categories = await getCategories()
+  const [{ posts, totalCount, totalPages }, categories, popularPosts, tags] = await Promise.all([
+    getPaginatedPosts(currentPage, 9),
+    getCategories(),
+    getPopularPosts(5),
+    getAllTags(),
+  ])
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -74,77 +78,168 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         </div>
       </header>
 
-      {/* Main Content */}
+      {/* Main Content with Sidebar */}
       <div className="max-w-6xl mx-auto px-4 py-8">
-        {posts.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-500">아직 게시된 글이 없습니다.</p>
-          </div>
-        ) : (
-          <>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {posts.map((post) => (
-                <PostCard key={post.id} post={post} />
-              ))}
-            </div>
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <nav className="mt-8 flex justify-center" aria-label="Pagination">
-                <div className="flex items-center gap-2">
-                  {/* Previous Button */}
-                  {currentPage > 1 ? (
-                    <Link
-                      href={`/?page=${currentPage - 1}`}
-                      className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      이전
-                    </Link>
-                  ) : (
-                    <span className="px-3 py-2 text-sm border border-gray-200 rounded-lg text-gray-400 cursor-not-allowed">
-                      이전
-                    </span>
-                  )}
-
-                  {/* Page Numbers */}
-                  <div className="flex items-center gap-1">
-                    {generatePageNumbers(currentPage, totalPages).map((pageNum, idx) => (
-                      pageNum === '...' ? (
-                        <span key={`ellipsis-${idx}`} className="px-2 text-gray-400">...</span>
-                      ) : (
-                        <Link
-                          key={pageNum}
-                          href={`/?page=${pageNum}`}
-                          className={`px-3 py-2 text-sm rounded-lg transition-colors ${
-                            pageNum === currentPage
-                              ? 'bg-green-600 text-white'
-                              : 'border border-gray-300 hover:bg-gray-50'
-                          }`}
-                        >
-                          {pageNum}
-                        </Link>
-                      )
-                    ))}
-                  </div>
-
-                  {/* Next Button */}
-                  {currentPage < totalPages ? (
-                    <Link
-                      href={`/?page=${currentPage + 1}`}
-                      className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      다음
-                    </Link>
-                  ) : (
-                    <span className="px-3 py-2 text-sm border border-gray-200 rounded-lg text-gray-400 cursor-not-allowed">
-                      다음
-                    </span>
-                  )}
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Main Posts Grid */}
+          <div className="flex-1">
+            {posts.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-gray-500">아직 게시된 글이 없습니다.</p>
+              </div>
+            ) : (
+              <>
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
+                  {posts.map((post) => (
+                    <PostCard key={post.id} post={post} />
+                  ))}
                 </div>
-              </nav>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <nav className="mt-8 flex justify-center" aria-label="페이지 네비게이션">
+                    <div className="flex items-center gap-2">
+                      {/* Previous Button */}
+                      {currentPage > 1 ? (
+                        <Link
+                          href={`/?page=${currentPage - 1}`}
+                          className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                        >
+                          이전
+                        </Link>
+                      ) : (
+                        <span className="px-3 py-2 text-sm border border-gray-200 rounded-lg text-gray-400 cursor-not-allowed">
+                          이전
+                        </span>
+                      )}
+
+                      {/* Page Numbers */}
+                      <div className="flex items-center gap-1">
+                        {generatePageNumbers(currentPage, totalPages).map((pageNum, idx) => (
+                          pageNum === '...' ? (
+                            <span key={`ellipsis-${idx}`} className="px-2 text-gray-400">...</span>
+                          ) : (
+                            <Link
+                              key={pageNum}
+                              href={`/?page=${pageNum}`}
+                              className={`px-3 py-2 text-sm rounded-lg transition-colors ${
+                                pageNum === currentPage
+                                  ? 'bg-green-600 text-white'
+                                  : 'border border-gray-300 hover:bg-gray-50'
+                              }`}
+                            >
+                              {pageNum}
+                            </Link>
+                          )
+                        ))}
+                      </div>
+
+                      {/* Next Button */}
+                      {currentPage < totalPages ? (
+                        <Link
+                          href={`/?page=${currentPage + 1}`}
+                          className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                        >
+                          다음
+                        </Link>
+                      ) : (
+                        <span className="px-3 py-2 text-sm border border-gray-200 rounded-lg text-gray-400 cursor-not-allowed">
+                          다음
+                        </span>
+                      )}
+                    </div>
+                  </nav>
+                )}
+              </>
             )}
-          </>
-        )}
+          </div>
+
+          {/* Sidebar */}
+          <aside className="w-full lg:w-72 space-y-6">
+            {/* Popular Posts Section */}
+            {popularPosts.length > 0 && (
+              <section className="bg-white rounded-lg shadow-sm p-4">
+                <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.534-.398-2.654A1 1 0 005.05 6.05 6.981 6.981 0 003 11a7 7 0 1011.95-4.95c-.592-.591-.98-.985-1.348-1.467-.363-.476-.724-1.063-1.207-2.03zM12.12 15.12A3 3 0 017 13s.879.5 2.5.5c0-1 .5-4 1.25-4.5.5 1 .786 1.293 1.371 1.879A2.99 2.99 0 0113 13a2.99 2.99 0 01-.879 2.121z"/>
+                  </svg>
+                  인기 리뷰
+                </h2>
+                <nav aria-label="인기 게시물">
+                  <ul className="space-y-3">
+                    {popularPosts.map((post, index) => (
+                      <li key={post.id}>
+                        <Link
+                          href={`/posts/${post.slug}`}
+                          className="flex items-start gap-3 group"
+                        >
+                          <span className="flex-shrink-0 w-6 h-6 bg-green-100 text-green-700 rounded-full flex items-center justify-center text-xs font-bold">
+                            {index + 1}
+                          </span>
+                          <span className="text-sm text-gray-700 group-hover:text-green-600 transition-colors line-clamp-2">
+                            {post.title}
+                          </span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </nav>
+              </section>
+            )}
+
+            {/* Category Navigation */}
+            {categories.length > 0 && (
+              <section className="bg-white rounded-lg shadow-sm p-4">
+                <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                  </svg>
+                  카테고리
+                </h2>
+                <nav aria-label="카테고리 네비게이션">
+                  <ul className="space-y-2">
+                    {categories.map((cat) => (
+                      <li key={cat.name}>
+                        <Link
+                          href={`/category/${encodeURIComponent(cat.name)}`}
+                          className="flex items-center justify-between text-sm text-gray-700 hover:text-green-600 transition-colors py-1"
+                        >
+                          <span>{cat.name}</span>
+                          <span className="bg-gray-100 text-gray-500 text-xs px-2 py-0.5 rounded-full">
+                            {cat.count}
+                          </span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </nav>
+              </section>
+            )}
+
+            {/* Tag Cloud */}
+            {tags.length > 0 && (
+              <section className="bg-white rounded-lg shadow-sm p-4">
+                <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                  </svg>
+                  인기 태그
+                </h2>
+                <nav aria-label="태그 클라우드" className="flex flex-wrap gap-2">
+                  {tags.slice(0, 15).map((tag) => (
+                    <Link
+                      key={tag.name}
+                      href={`/search?q=${encodeURIComponent(tag.name)}`}
+                      className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full hover:bg-green-100 hover:text-green-700 transition-colors"
+                    >
+                      #{tag.name}
+                    </Link>
+                  ))}
+                </nav>
+              </section>
+            )}
+          </aside>
+        </div>
       </div>
 
       {/* Footer */}
@@ -216,7 +311,7 @@ function PostCard({ post }: PostCardProps) {
           {post.featured_image ? (
             <Image
               src={post.featured_image}
-              alt={post.title}
+              alt={`${post.title} - ${post.category} 골프 장비 제품 이미지`}
               fill
               className="object-cover"
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"

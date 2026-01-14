@@ -38,6 +38,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     },
     alternates: {
       canonical: categoryUrl,
+      languages: {
+        'ko-KR': categoryUrl,
+        'x-default': categoryUrl,
+      },
     },
   }
 }
@@ -81,7 +85,7 @@ export default async function CategoryPage({ params }: PageProps) {
                   {post.featured_image ? (
                     <Image
                       src={post.featured_image}
-                      alt={post.title}
+                      alt={`${post.title} - ${post.category} 골프 장비 제품 이미지`}
                       fill
                       className="object-cover"
                       sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"

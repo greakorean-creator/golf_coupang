@@ -216,6 +216,55 @@ export async function getPaginatedPosts(
   }
 }
 
+// Get popular posts (by view count)
+export async function getPopularPosts(limit: number = 5): Promise<PostListItem[]> {
+  const supabase = createServerSupabaseClient()
+
+  const { data, error } = await supabase
+    .from('posts')
+    .select('id, slug, title, description, featured_image, category, tags, published_at, product_price')
+    .eq('is_published', true)
+    .order('view_count', { ascending: false })
+    .limit(limit)
+
+  if (error) {
+    console.error('Error fetching popular posts:', error)
+    return []
+  }
+
+  return (data || []) as PostListItem[]
+}
+
+// Get all unique tags with count
+export async function getAllTags(): Promise<{ name: string; count: number }[]> {
+  const supabase = createServerSupabaseClient()
+
+  const { data, error } = await supabase
+    .from('posts')
+    .select('tags')
+    .eq('is_published', true)
+
+  if (error) {
+    console.error('Error fetching tags:', error)
+    return []
+  }
+
+  // Count tag occurrences
+  const tagCounts: Record<string, number> = {}
+  const posts = (data || []) as { tags: string[] | null }[]
+  posts.forEach((post) => {
+    if (post.tags) {
+      post.tags.forEach((tag) => {
+        tagCounts[tag] = (tagCounts[tag] || 0) + 1
+      })
+    }
+  })
+
+  return Object.entries(tagCounts)
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
+}
+
 // Increment view count (optional - requires RPC function in Supabase)
 // export async function incrementViewCount(postId: string) {
 //   const supabase = createServerSupabaseClient()
