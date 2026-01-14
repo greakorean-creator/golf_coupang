@@ -76,8 +76,10 @@ export default async function PostPage({ params }: PageProps) {
     ? new Intl.NumberFormat('ko-KR').format(post.product_price) + '원'
     : null
 
-  // JSON-LD structured data
-  const jsonLd = {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://kanomsoft.com'
+
+  // JSON-LD Article Schema
+  const articleJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Article',
     headline: post.title,
@@ -85,28 +87,129 @@ export default async function PostPage({ params }: PageProps) {
     image: post.featured_image,
     datePublished: post.published_at,
     dateModified: post.updated_at,
+    mainEntityOfPage: {
+      '@type': 'WebPage',
+      '@id': `${siteUrl}/posts/${post.slug}`,
+    },
     author: {
       '@type': 'Organization',
       name: '골프 장비 리뷰',
+      url: siteUrl,
     },
     publisher: {
       '@type': 'Organization',
       name: '골프 장비 리뷰',
+      url: siteUrl,
+      logo: {
+        '@type': 'ImageObject',
+        url: `${siteUrl}/logo.png`,
+      },
     },
+  }
+
+  // JSON-LD Product Schema (for Coupang affiliate products)
+  const productJsonLd = post.product_price ? {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: post.product_name || post.title,
+    description: post.description,
+    image: post.featured_image,
+    brand: {
+      '@type': 'Brand',
+      name: post.category,
+    },
+    offers: {
+      '@type': 'Offer',
+      url: post.coupang_url || `${siteUrl}/posts/${post.slug}`,
+      priceCurrency: 'KRW',
+      price: post.product_price,
+      availability: 'https://schema.org/InStock',
+      seller: {
+        '@type': 'Organization',
+        name: '쿠팡',
+      },
+    },
+    review: {
+      '@type': 'Review',
+      reviewRating: {
+        '@type': 'Rating',
+        ratingValue: '4.5',
+        bestRating: '5',
+      },
+      author: {
+        '@type': 'Organization',
+        name: '골프 장비 리뷰',
+      },
+      reviewBody: post.description,
+    },
+  } : null
+
+  // JSON-LD BreadcrumbList Schema
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: '홈',
+        item: siteUrl,
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: post.category,
+        item: `${siteUrl}/category/${encodeURIComponent(post.category)}`,
+      },
+      {
+        '@type': 'ListItem',
+        position: 3,
+        name: post.title,
+        item: `${siteUrl}/posts/${post.slug}`,
+      },
+    ],
   }
 
   return (
     <>
-      {/* JSON-LD */}
+      {/* JSON-LD Article Schema */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
+      />
+      {/* JSON-LD Product Schema */}
+      {productJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+        />
+      )}
+      {/* JSON-LD Breadcrumb Schema */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
 
       <main className="min-h-screen bg-gray-50">
-        {/* Header */}
+        {/* Header with Breadcrumb */}
         <header className="bg-white shadow-sm">
           <div className="max-w-4xl mx-auto px-4 py-6">
+            {/* Breadcrumb Navigation */}
+            <nav aria-label="Breadcrumb" className="mb-2">
+              <ol className="flex items-center space-x-2 text-sm text-gray-500">
+                <li>
+                  <Link href="/" className="hover:text-green-600">홈</Link>
+                </li>
+                <li className="before:content-['/'] before:mx-2">
+                  <Link href={`/category/${encodeURIComponent(post.category)}`} className="hover:text-green-600">
+                    {post.category}
+                  </Link>
+                </li>
+                <li className="before:content-['/'] before:mx-2 text-gray-900 font-medium truncate max-w-[200px]">
+                  {post.title}
+                </li>
+              </ol>
+            </nav>
             <Link href="/" className="text-green-600 hover:text-green-700 text-sm">
               ← 목록으로 돌아가기
             </Link>

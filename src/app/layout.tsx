@@ -43,6 +43,47 @@ export const metadata: Metadata = {
     // Add your Google Search Console verification code here
     // google: "your-google-verification-code",
   },
+  alternates: {
+    types: {
+      "application/rss+xml": `${siteUrl}/feed.xml`,
+    },
+  },
+};
+
+// JSON-LD WebSite Schema with SearchAction
+const websiteJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "골프 장비 리뷰",
+  alternateName: "Golf Equipment Review",
+  url: siteUrl,
+  description: "골프 드라이버, 아이언, 퍼터 등 골프 장비 리뷰와 추천 정보를 제공합니다.",
+  inLanguage: "ko-KR",
+  potentialAction: {
+    "@type": "SearchAction",
+    target: {
+      "@type": "EntryPoint",
+      urlTemplate: `${siteUrl}/search?q={search_term_string}`,
+    },
+    "query-input": "required name=search_term_string",
+  },
+};
+
+// JSON-LD Organization Schema
+const organizationJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "골프 장비 리뷰",
+  alternateName: "Golf Equipment Review",
+  url: siteUrl,
+  logo: `${siteUrl}/logo.png`,
+  description: "골프 장비 전문 리뷰 블로그",
+  sameAs: [],
+  contactPoint: {
+    "@type": "ContactPoint",
+    contactType: "customer service",
+    availableLanguage: ["Korean"],
+  },
 };
 
 export default function RootLayout({
@@ -52,6 +93,18 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko">
+      <head>
+        {/* JSON-LD WebSite Schema */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+        />
+        {/* JSON-LD Organization Schema */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+        />
+      </head>
       <body className={`${notoSansKr.variable} font-sans antialiased`}>
         {children}
       </body>
