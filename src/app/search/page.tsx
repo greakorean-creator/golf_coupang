@@ -5,7 +5,11 @@ import { searchPosts } from '@/lib/supabase-server'
 
 export const metadata: Metadata = {
   title: '검색 결과',
-  description: '골프 장비 리뷰 검색',
+  description: '골프 장비 리뷰 검색 - 드라이버, 아이언, 퍼터 등 다양한 골프 용품을 검색하세요.',
+  robots: {
+    index: false,
+    follow: true,
+  },
 }
 
 interface SearchPageProps {

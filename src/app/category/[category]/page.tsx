@@ -22,10 +22,23 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { category } = await params
   const decodedCategory = decodeURIComponent(category)
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://golf-blog.vercel.app'
+  const categoryUrl = `${siteUrl}/category/${encodeURIComponent(decodedCategory)}`
 
   return {
     title: `${decodedCategory} 카테고리`,
-    description: `${decodedCategory} 관련 골프 장비 리뷰 모음`,
+    description: `${decodedCategory} 관련 골프 장비 리뷰 모음 - 최신 제품 비교 분석과 구매 가이드를 확인하세요.`,
+    openGraph: {
+      title: `${decodedCategory} - 골프 장비 리뷰`,
+      description: `${decodedCategory} 관련 골프 장비 리뷰 모음`,
+      type: 'website',
+      url: categoryUrl,
+      siteName: '골프 장비 리뷰',
+      locale: 'ko_KR',
+    },
+    alternates: {
+      canonical: categoryUrl,
+    },
   }
 }
 

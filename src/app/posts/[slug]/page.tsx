@@ -80,7 +80,7 @@ export default async function PostPage({ params }: PageProps) {
     ? new Intl.NumberFormat('ko-KR').format(post.product_price) + '원'
     : null
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://kanomsoft.com'
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://golf-blog.vercel.app'
 
   // JSON-LD Article Schema
   const articleJsonLd = {
@@ -118,10 +118,7 @@ export default async function PostPage({ params }: PageProps) {
     name: post.product_name || post.title,
     description: post.description,
     image: post.featured_image,
-    brand: {
-      '@type': 'Brand',
-      name: post.category,
-    },
+    category: post.category,
     offers: {
       '@type': 'Offer',
       url: post.coupang_url || `${siteUrl}/posts/${post.slug}`,
@@ -132,19 +129,6 @@ export default async function PostPage({ params }: PageProps) {
         '@type': 'Organization',
         name: '쿠팡',
       },
-    },
-    review: {
-      '@type': 'Review',
-      reviewRating: {
-        '@type': 'Rating',
-        ratingValue: '4.5',
-        bestRating: '5',
-      },
-      author: {
-        '@type': 'Organization',
-        name: '골프 장비 리뷰',
-      },
-      reviewBody: post.description,
     },
   } : null
 

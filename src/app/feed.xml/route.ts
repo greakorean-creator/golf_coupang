@@ -1,7 +1,7 @@
 import { getPublishedPosts } from '@/lib/supabase-server'
 
 export async function GET() {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://kanomsoft.com'
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://golf-blog.vercel.app'
   const posts = await getPublishedPosts(50) // Get latest 50 posts
 
   const rssItems = posts.map((post) => {
