@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import type { Database } from '@/types/database'
+import type { FaqItem } from '@/types/database'
 
-// Create admin client with service role key
+// Create admin client with service role key (untyped for flexibility)
 function createAdminClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY!
-  return createClient<Database>(supabaseUrl, supabaseServiceKey)
+  return createClient(supabaseUrl, supabaseServiceKey)
 }
 
 // Simple admin key check (you can replace with proper auth later)
@@ -74,7 +74,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Calculate word count
-    const wordCount = body.content
+    const contentText = String(body.content || '')
+    const wordCount = contentText
       .replace(/<[^>]*>/g, '') // Remove HTML tags
       .replace(/\s+/g, ' ')    // Normalize whitespace
       .trim()
@@ -96,7 +97,7 @@ export async function POST(request: NextRequest) {
       seo_keywords: body.seo_keywords || [],
       faq: body.faq || [],
       word_count: wordCount,
-      is_published: body.is_published ?? false,
+      is_published: Boolean(body.is_published),
       published_at: body.is_published ? new Date().toISOString() : null,
     }
 
@@ -132,9 +133,10 @@ export async function PUT(request: NextRequest) {
     const supabase = createAdminClient()
 
     // Calculate word count if content is updated
-    let wordCount = undefined
+    let wordCount: number | undefined = undefined
     if (body.content) {
-      wordCount = body.content
+      const contentText = String(body.content)
+      wordCount = contentText
         .replace(/<[^>]*>/g, '')
         .replace(/\s+/g, ' ')
         .trim()
@@ -149,22 +151,22 @@ export async function PUT(request: NextRequest) {
     // Only include fields that are provided
     if (body.title !== undefined) updateData.title = body.title
     if (body.slug !== undefined) updateData.slug = body.slug
-    if (body.description !== undefined) updateData.description = body.description
+    if (body.description !== undefined) updateData.description = body.description || null
     if (body.content !== undefined) {
       updateData.content = body.content
       updateData.word_count = wordCount
     }
-    if (body.featured_image !== undefined) updateData.featured_image = body.featured_image
-    if (body.coupang_url !== undefined) updateData.coupang_url = body.coupang_url
-    if (body.coupang_product_id !== undefined) updateData.coupang_product_id = body.coupang_product_id
-    if (body.product_name !== undefined) updateData.product_name = body.product_name
+    if (body.featured_image !== undefined) updateData.featured_image = body.featured_image || null
+    if (body.coupang_url !== undefined) updateData.coupang_url = body.coupang_url || null
+    if (body.coupang_product_id !== undefined) updateData.coupang_product_id = body.coupang_product_id || null
+    if (body.product_name !== undefined) updateData.product_name = body.product_name || null
     if (body.product_price !== undefined) updateData.product_price = body.product_price ? Number(body.product_price) : null
     if (body.category !== undefined) updateData.category = body.category
     if (body.tags !== undefined) updateData.tags = body.tags
     if (body.seo_keywords !== undefined) updateData.seo_keywords = body.seo_keywords
-    if (body.faq !== undefined) updateData.faq = body.faq
+    if (body.faq !== undefined) updateData.faq = body.faq as FaqItem[]
     if (body.is_published !== undefined) {
-      updateData.is_published = body.is_published
+      updateData.is_published = Boolean(body.is_published)
       // Set published_at when first published
       if (body.is_published && !body.published_at) {
         updateData.published_at = new Date().toISOString()
