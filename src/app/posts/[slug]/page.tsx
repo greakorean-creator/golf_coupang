@@ -2,7 +2,8 @@ import { Metadata } from 'next'
 import Link from 'next/link'
 import Image from 'next/image'
 import { notFound } from 'next/navigation'
-import { getPostBySlug, getAllPostSlugs } from '@/lib/supabase-server'
+import { getPostBySlug, getAllPostSlugs, getRelatedPosts } from '@/lib/supabase-server'
+import type { FaqItem } from '@/types/database'
 
 export const revalidate = 3600 // Revalidate every hour
 
@@ -63,6 +64,9 @@ export default async function PostPage({ params }: PageProps) {
   if (!post) {
     notFound()
   }
+
+  // Fetch related posts (same category, limit 3 for performance)
+  const relatedPosts = await getRelatedPosts(slug, post.category, 3)
 
   const formattedDate = post.published_at
     ? new Date(post.published_at).toLocaleDateString('ko-KR', {
@@ -170,6 +174,20 @@ export default async function PostPage({ params }: PageProps) {
     ],
   }
 
+  // JSON-LD FAQ Schema (for Google rich results)
+  const faqJsonLd = post.faq && post.faq.length > 0 ? {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: post.faq.map((item: FaqItem) => ({
+      '@type': 'Question',
+      name: item.question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: item.answer,
+      },
+    })),
+  } : null
+
   return (
     <>
       {/* JSON-LD Article Schema */}
@@ -189,6 +207,13 @@ export default async function PostPage({ params }: PageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
+      {/* JSON-LD FAQ Schema */}
+      {faqJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+        />
+      )}
 
       <main className="min-h-screen bg-gray-50">
         {/* Header with Breadcrumb */}
@@ -269,7 +294,72 @@ export default async function PostPage({ params }: PageProps) {
             className="prose prose-lg max-w-none prose-headings:text-gray-900 prose-a:text-green-600 prose-a:no-underline hover:prose-a:underline"
             dangerouslySetInnerHTML={{ __html: formatMarkdown(post.content) }}
           />
+
+          {/* FAQ Section */}
+          {post.faq && post.faq.length > 0 && (
+            <section className="mt-12 border-t pt-8">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">자주 묻는 질문</h2>
+              <div className="space-y-4">
+                {post.faq.map((item: FaqItem, index: number) => (
+                  <details
+                    key={index}
+                    className="bg-white border border-gray-200 rounded-lg overflow-hidden"
+                  >
+                    <summary className="px-4 py-3 cursor-pointer font-medium text-gray-900 hover:bg-gray-50 flex items-center justify-between">
+                      <span>{item.question}</span>
+                      <svg className="w-5 h-5 text-gray-500 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </summary>
+                    <div className="px-4 py-3 bg-gray-50 text-gray-700 border-t">
+                      {item.answer}
+                    </div>
+                  </details>
+                ))}
+              </div>
+            </section>
+          )}
         </article>
+
+        {/* Related Posts Section */}
+        {relatedPosts.length > 0 && (
+          <section className="max-w-4xl mx-auto px-4 py-8">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">관련 리뷰</h2>
+            <div className="grid gap-4 md:grid-cols-3">
+              {relatedPosts.map((relatedPost) => (
+                <Link
+                  key={relatedPost.id}
+                  href={`/posts/${relatedPost.slug}`}
+                  className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow"
+                >
+                  <div className="relative h-32 bg-gray-200">
+                    {relatedPost.featured_image ? (
+                      <Image
+                        src={relatedPost.featured_image}
+                        alt={relatedPost.title}
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 768px) 100vw, 250px"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-gray-400">
+                        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-3">
+                    <h3 className="font-medium text-gray-900 text-sm line-clamp-2">
+                      {relatedPost.title}
+                    </h3>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Footer */}
         <footer className="bg-white border-t mt-12">

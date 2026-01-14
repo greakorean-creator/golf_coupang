@@ -1,3 +1,8 @@
+export interface FaqItem {
+  question: string
+  answer: string
+}
+
 export interface Post {
   id: string
   slug: string
@@ -12,6 +17,7 @@ export interface Post {
   category: string
   tags: string[] | null
   seo_keywords: string[] | null
+  faq: FaqItem[] | null
   view_count: number
   word_count: number | null
   is_published: boolean

@@ -125,6 +125,34 @@ export async function getAllPostSlugs(): Promise<{ slug: string; updated_at: str
   return data || []
 }
 
+// Related post type (minimal fields for performance)
+type RelatedPostItem = Pick<Post, 'id' | 'slug' | 'title' | 'featured_image' | 'category'>
+
+// Get related posts (same category, excluding current post)
+export async function getRelatedPosts(
+  currentSlug: string,
+  category: string,
+  limit: number = 3
+): Promise<RelatedPostItem[]> {
+  const supabase = createServerSupabaseClient()
+
+  const { data, error } = await supabase
+    .from('posts')
+    .select('id, slug, title, featured_image, category')
+    .eq('is_published', true)
+    .eq('category', category)
+    .neq('slug', currentSlug)
+    .order('published_at', { ascending: false })
+    .limit(limit)
+
+  if (error) {
+    console.error('Error fetching related posts:', error)
+    return []
+  }
+
+  return (data || []) as RelatedPostItem[]
+}
+
 // Increment view count (optional - requires RPC function in Supabase)
 // export async function incrementViewCount(postId: string) {
 //   const supabase = createServerSupabaseClient()
