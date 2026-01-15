@@ -334,13 +334,9 @@ function PostCard({ post }: PostCardProps) {
             </div>
           )}
           {/* Category Badge */}
-          <Link
-            href={`/category/${encodeURIComponent(post.category)}`}
-            className="absolute top-2 left-2 bg-green-600 text-white text-xs px-2 py-1 rounded hover:bg-green-700 transition-colors"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <span className="absolute top-2 left-2 bg-green-600 text-white text-xs px-2 py-1 rounded">
             {post.category}
-          </Link>
+          </span>
         </div>
 
         {/* Content */}
