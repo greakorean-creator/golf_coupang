@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
 
 interface FaqItem {
   question: string
@@ -357,28 +356,30 @@ export default function AdminPage() {
               <p className="text-gray-600 mt-1">포스트 작성 및 관리</p>
             </div>
             <div className="flex gap-4">
-              <Link
+              <a
                 href="/"
                 className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 블로그로 돌아가기
-              </Link>
-              {!showForm && (
-                <>
-                  <button
-                    onClick={() => setShowInfoModal(true)}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    정보 포스트 생성
-                  </button>
-                  <button
-                    onClick={startNewPost}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                  >
-                    새 포스트 작성
-                  </button>
-                </>
-              )}
+              </a>
+              {!showForm ? (
+                <button
+                  type="button"
+                  onClick={() => setShowInfoModal(true)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  정보 포스트 생성
+                </button>
+              ) : null}
+              {!showForm ? (
+                <button
+                  type="button"
+                  onClick={startNewPost}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  새 포스트 작성
+                </button>
+              ) : null}
             </div>
           </div>
         </div>
@@ -819,22 +820,25 @@ export default function AdminPage() {
                       </p>
                     </div>
                     <div className="flex items-center gap-2 ml-4">
-                      {post.is_published && (
-                        <Link
+                      {post.is_published ? (
+                        <a
                           href={`/posts/${post.slug}`}
                           target="_blank"
+                          rel="noopener noreferrer"
                           className="px-3 py-1 text-sm text-gray-600 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
                         >
                           보기
-                        </Link>
-                      )}
+                        </a>
+                      ) : null}
                       <button
+                        type="button"
                         onClick={() => startEditPost(post)}
                         className="px-3 py-1 text-sm text-blue-600 border border-blue-300 rounded hover:bg-blue-50 transition-colors"
                       >
                         수정
                       </button>
                       <button
+                        type="button"
                         onClick={() => handleDelete(post)}
                         className="px-3 py-1 text-sm text-red-600 border border-red-300 rounded hover:bg-red-50 transition-colors"
                       >
