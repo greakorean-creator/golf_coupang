@@ -2,10 +2,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import type { FaqItem } from '@/types/database'
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic'
+
 // Create admin client with service role key (untyped for flexibility)
 function createAdminClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY!
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY
+
+  if (!supabaseUrl || !supabaseServiceKey) {
+    return null
+  }
+
   return createClient(supabaseUrl, supabaseServiceKey)
 }
 
@@ -22,31 +30,53 @@ function isAuthorized(request: NextRequest): boolean {
 
 // GET - List all posts (including unpublished)
 export async function GET(request: NextRequest) {
-  if (!isAuthorized(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  try {
+    if (!isAuthorized(request)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const supabase = createAdminClient()
+
+    if (!supabase) {
+      return NextResponse.json({
+        error: 'Missing Supabase configuration. Please set SUPABASE_SERVICE_KEY environment variable.',
+        debug: {
+          hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+          hasServiceKey: !!process.env.SUPABASE_SERVICE_KEY,
+        }
+      }, { status: 500 })
+    }
+
+    const { data, error } = await supabase
+      .from('posts')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Supabase error:', error)
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ posts: data || [] })
+  } catch (err) {
+    console.error('API error:', err)
+    const message = err instanceof Error ? err.message : 'Server error'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
-
-  const supabase = createAdminClient()
-
-  const { data, error } = await supabase
-    .from('posts')
-    .select('*')
-    .order('created_at', { ascending: false })
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
-
-  return NextResponse.json({ posts: data })
 }
 
 // POST - Create a new post
 export async function POST(request: NextRequest) {
-  if (!isAuthorized(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
   try {
+    if (!isAuthorized(request)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const supabase = createAdminClient()
+    if (!supabase) {
+      return NextResponse.json({ error: 'Missing Supabase configuration' }, { status: 500 })
+    }
+
     const body = await request.json()
 
     // Validate required fields
@@ -56,8 +86,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-
-    const supabase = createAdminClient()
 
     // Check if slug already exists
     const { data: existingPost } = await supabase
@@ -108,29 +136,35 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
+      console.error('Supabase insert error:', error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
     return NextResponse.json({ post: data }, { status: 201 })
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+  } catch (err) {
+    console.error('API error:', err)
+    const message = err instanceof Error ? err.message : 'Server error'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
 
 // PUT - Update an existing post
 export async function PUT(request: NextRequest) {
-  if (!isAuthorized(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
   try {
+    if (!isAuthorized(request)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const supabase = createAdminClient()
+    if (!supabase) {
+      return NextResponse.json({ error: 'Missing Supabase configuration' }, { status: 500 })
+    }
+
     const body = await request.json()
 
     if (!body.id) {
       return NextResponse.json({ error: 'Post ID is required' }, { status: 400 })
     }
-
-    const supabase = createAdminClient()
 
     // Calculate word count if content is updated
     let wordCount: number | undefined = undefined
@@ -181,22 +215,30 @@ export async function PUT(request: NextRequest) {
       .single()
 
     if (error) {
+      console.error('Supabase update error:', error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
     return NextResponse.json({ post: data })
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+  } catch (err) {
+    console.error('API error:', err)
+    const message = err instanceof Error ? err.message : 'Server error'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
 
 // DELETE - Delete a post
 export async function DELETE(request: NextRequest) {
-  if (!isAuthorized(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
   try {
+    if (!isAuthorized(request)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const supabase = createAdminClient()
+    if (!supabase) {
+      return NextResponse.json({ error: 'Missing Supabase configuration' }, { status: 500 })
+    }
+
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
 
@@ -204,19 +246,20 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Post ID is required' }, { status: 400 })
     }
 
-    const supabase = createAdminClient()
-
     const { error } = await supabase
       .from('posts')
       .delete()
       .eq('id', id)
 
     if (error) {
+      console.error('Supabase delete error:', error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })
-  } catch {
-    return NextResponse.json({ error: 'Server error' }, { status: 500 })
+  } catch (err) {
+    console.error('API error:', err)
+    const message = err instanceof Error ? err.message : 'Server error'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

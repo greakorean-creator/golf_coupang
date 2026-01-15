@@ -58,6 +58,20 @@ const CATEGORIES = [
   '골프의류',
   '골프액세서리',
   '기타',
+  '정보',
+]
+
+const INFO_TOPICS = [
+  '골프 스윙 기초',
+  '골프 에티켓과 규칙',
+  '골프 용어 정리',
+  '초보자 연습 방법',
+  '그립 잡는 방법',
+  '퍼팅 기술 향상',
+  '드라이버 비거리 늘리기',
+  '아이언 정확도 높이기',
+  '골프 코스 전략',
+  '골프 피트니스',
 ]
 
 export default function AdminPage() {
@@ -68,6 +82,9 @@ export default function AdminPage() {
   const [success, setSuccess] = useState<string | null>(null)
   const [editingPost, setEditingPost] = useState<Post | null>(null)
   const [showForm, setShowForm] = useState(false)
+  const [showInfoModal, setShowInfoModal] = useState(false)
+  const [infoTopic, setInfoTopic] = useState('')
+  const [generatingInfo, setGeneratingInfo] = useState(false)
 
   const emptyForm: PostFormData = {
     title: '',
@@ -97,7 +114,19 @@ export default function AdminPage() {
     try {
       setLoading(true)
       const res = await fetch('/api/posts')
-      const data = await res.json()
+
+      // Check if response is ok before parsing JSON
+      const text = await res.text()
+      if (!text) {
+        throw new Error('Empty response from server. Check SUPABASE_SERVICE_KEY environment variable.')
+      }
+
+      let data
+      try {
+        data = JSON.parse(text)
+      } catch {
+        throw new Error(`Invalid JSON response: ${text.substring(0, 100)}`)
+      }
 
       if (!res.ok) {
         throw new Error(data.error || 'Failed to load posts')
@@ -283,6 +312,40 @@ export default function AdminPage() {
     }
   }
 
+  async function handleGenerateInfoPost() {
+    if (!infoTopic.trim()) {
+      setError('주제를 입력해주세요')
+      return
+    }
+
+    setError(null)
+    setSuccess(null)
+    setGeneratingInfo(true)
+
+    try {
+      const res = await fetch('/api/generate-info-post', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic: infoTopic }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to generate info post')
+      }
+
+      setSuccess(`정보 포스트가 생성되었습니다: ${data.post.title}`)
+      setShowInfoModal(false)
+      setInfoTopic('')
+      await loadPosts()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to generate info post')
+    } finally {
+      setGeneratingInfo(false)
+    }
+  }
+
   return (
     <main className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -301,17 +364,118 @@ export default function AdminPage() {
                 블로그로 돌아가기
               </Link>
               {!showForm && (
-                <button
-                  onClick={startNewPost}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                >
-                  새 포스트 작성
-                </button>
+                <>
+                  <button
+                    onClick={() => setShowInfoModal(true)}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    정보 포스트 생성
+                  </button>
+                  <button
+                    onClick={startNewPost}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                  >
+                    새 포스트 작성
+                  </button>
+                </>
               )}
             </div>
           </div>
         </div>
       </header>
+
+      {/* Info Post Modal */}
+      {showInfoModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-gray-900">정보 포스트 생성</h2>
+              <button
+                onClick={() => {
+                  setShowInfoModal(false)
+                  setInfoTopic('')
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <p className="text-gray-600 mb-4">
+              AI가 골프 정보 포스트를 자동으로 작성합니다. 주제를 입력하거나 추천 주제를 선택하세요.
+            </p>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                주제 입력
+              </label>
+              <input
+                type="text"
+                value={infoTopic}
+                onChange={(e) => setInfoTopic(e.target.value)}
+                placeholder="예: 골프 스윙의 기본 원리"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={generatingInfo}
+              />
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                추천 주제
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {INFO_TOPICS.map((topic) => (
+                  <button
+                    key={topic}
+                    type="button"
+                    onClick={() => setInfoTopic(topic)}
+                    disabled={generatingInfo}
+                    className={`px-3 py-1 text-sm rounded-full border transition-colors ${
+                      infoTopic === topic
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'
+                    } disabled:opacity-50`}
+                  >
+                    {topic}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={handleGenerateInfoPost}
+                disabled={generatingInfo || !infoTopic.trim()}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {generatingInfo ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    생성 중...
+                  </span>
+                ) : (
+                  '생성하기'
+                )}
+              </button>
+              <button
+                onClick={() => {
+                  setShowInfoModal(false)
+                  setInfoTopic('')
+                }}
+                disabled={generatingInfo}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                취소
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Messages */}
